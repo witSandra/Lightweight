@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 from collections import OrderedDict
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 import torch
 from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
@@ -53,7 +52,7 @@ def main():
     else:
         dataset_kwargs = {'data_path': args.data_path, 'dataset_name': args.dataset,
                           'is_train': False}
-        print("data_path2:", args.data_path)    # /root/autodl-tmp/datasets/my_test
+        print("data_path2:", args.data_path) 
 
 
     test_dataset = get_dataset(**dataset_kwargs)
