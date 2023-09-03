@@ -3,14 +3,13 @@ import cv2
 import numpy as np
 from datetime import datetime
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 import torch
 
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 from tensorboardX import SummaryWriter
 
-from models.LD2_BS import FastDepth    # 导入不同模块
+from models.LD2_BS import FastDepth  
 import utils.metrics as metrics
 from utils.criterion import SiLogLoss
 import utils.my_logging as logging
@@ -48,20 +47,10 @@ def main():
     
     model = FastDepth(max_depth=args.max_depth)
 
-    # FLOPs and parameters
-    # stat(model, (3, 448, 576))
-    # stat(model, (3, 352, 1216))
-
-    # Resume = True
-    # if Resume:
-    #     path = "/mnt/harddisk1/Duanxiuzhen/codespace/FastDepth/logs/kitti/0524_lightNet_BRCshuff8_eca/epoch_25_model.ckpt"
-    #     model = torch.load(path)
-
     if args.gpu_or_cpu == 'gpu':
         device = torch.device('cuda')
         cudnn.benchmark = True
         model = torch.nn.DataParallel(model)
-        # model = torch.nn.parallel.DistributedDataParallel(model)
     else:
         device = torch.device('cpu')
     model.to(device)
@@ -91,7 +80,7 @@ def main():
     global global_step
     global_step = 0
 
-    t1 = time.perf_counter()        # 记录训练开始时间
+    t1 = time.perf_counter()  
     scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.7)
 
     enumerate
@@ -118,7 +107,7 @@ def main():
 
             for each_metric, each_results in results_dict.items():
                 writer.add_scalar(each_metric, each_results, epoch)
-        scheduler.step()  # 一次epoch对应一次scheduler.step()，进行学习率更新
+        scheduler.step()
 
     print('Time(h)：', (time.perf_counter() - t1) / 3600)
 
@@ -143,24 +132,19 @@ def train(train_loader, model, criterion_d, optimizer, device, epoch, args):
         input_RGB = batch['image'].to(device)
         depth_gt = batch['depth'].to(device)
 
-        preds = model(input_RGB)        #
+        preds = model(input_RGB)      
 
-        optimizer.zero_grad()           # (1)
+        optimizer.zero_grad()        
         loss_d = criterion_d(preds['pred_d'].squeeze(), depth_gt)
         
         depth_loss.update(loss_d.item(), input_RGB.size(0))
-        loss_d.backward()               # (2)
+        loss_d.backward()            
 
         logging.progress_bar(batch_idx, len(train_loader), args.epochs, epoch,
                             ('Depth Loss: %.4f (%.4f)' %
                             (depth_loss.val, depth_loss.avg)))      # loss
 
-        optimizer.step()                # (3)
-
-
-    with open(log_loss, 'a') as txtfile:
-        txtfile.write("\n第%d个lr：%f, Depth Loss: %.4f (%.4f)" % (epoch, optimizer.state_dict()['param_groups'][0]['lr'],depth_loss.val, depth_loss.avg))
-        # txtfile.write('\nDepth Loss: %.4f (%.4f)' % (depth_loss.val, depth_loss.avg))
+        optimizer.step()               
 
     return loss_d
 
@@ -185,7 +169,6 @@ def validate(val_loader, model, criterion_d, device, epoch, args, log_dir):
         filename = batch['filename'][0]
 
         with torch.no_grad():
-            # print("input_RGB:", input_RGB.size())    #input_RGB:torch.Size([1, 3, 480, 640])
             preds = model(input_RGB)
 
         pred_d = preds['pred_d'].squeeze()
@@ -195,7 +178,7 @@ def validate(val_loader, model, criterion_d, device, epoch, args, log_dir):
 
         depth_loss.update(loss_d.item(), input_RGB.size(0))
 
-        pred_crop, gt_crop = metrics.cropping_img(args, pred_d, depth_gt)   ###########
+        pred_crop, gt_crop = metrics.cropping_img(args, pred_d, depth_gt)  
         computed_result = metrics.eval_depth(pred_crop, gt_crop)
         save_path = os.path.join(result_dir, filename)
 
